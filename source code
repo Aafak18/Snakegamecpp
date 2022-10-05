@@ -1,0 +1,572 @@
+#include "graphics.h"
+#include <iostream>
+#include <math.h>
+#include <stdlib.h>                     
+#include <ctype.h>  
+#include<time.h>
+
+using namespace std;
+
+struct player
+{
+	char name[50];
+	int score;
+}p;
+
+struct food
+{
+	int x;
+	int y;
+	int radius;
+};
+
+struct snake
+{
+	int snake_length;
+	int snake_head_x; 
+	int snake_head_y;
+	int snake_head_direction;
+	int snake_tail_x; 
+	int snake_tail_y; 
+	int snake_tail_direction;
+	int snake_bend_x [300]; //saves x-coordinates of snake head when we bend the snake
+	int snake_bend_y[300]; //saves y-coordinates of snake head when we bend the snake
+	int snake_bend_direction[300]; //saves the direction of the snake head at bend time
+};
+
+struct obstacle
+{
+	int x1;
+	int y1;
+	int x2;
+	int y2;
+};
+
+struct boundary
+{
+	int x1;
+	int y1;
+	int x2;
+	int y2;
+};
+
+
+void init(player &p, food &f, snake &s, obstacle &obs1, obstacle &obs2, obstacle &obs3, boundary &b1, boundary &b2);
+void initplayer(player &p);
+void initfood(food &f);
+void initsnake(snake &s);
+void initboundary(boundary &b1, boundary &b2);
+void initobstacle(obstacle &obs1, obstacle &obs2, obstacle &obs3);
+
+void draw(food &f, snake &s, obstacle &obs1, obstacle &obs2, obstacle &obs3, boundary &b1, boundary &b2);
+void drawFood(food &f);
+void drawSnake(snake &s);
+void drawObs(obstacle &obs1, obstacle &obs2, obstacle &obs3);
+void drawBoundary(boundary &b1, boundary &b2);
+
+void moveSnake(snake &s);
+
+void changeDirection(snake &s, int &i, int &j);
+
+void collision_check(snake &s);
+void collision_wall(snake &s);
+void collision_obstacles(snake &s);
+void collision_snake(snake &s);
+void collision_obstacles(snake &s);
+
+void PauseAndSave(player &p, snake &s, food &f);
+void newInitialization(player &p, snake &s, food &f);
+
+void increaseSnakeSize(snake &s);
+void eatFood(food &f, snake &s, player &p);
+void checkFoodOnBoundary(food &f);
+void Food_on_Obstacles(food &f);
+void display_name_score(player &p);
+void highscore(player &p);
+//int APIENTRY WinMain
+//( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow )
+void main()
+{
+	int option=0;
+	cout<<"\t\t\t\tWELCOME TO SNAKE 1.0"<<endl<<endl;
+	cout<<"Press <<1>> Start A New Game: "<<endl;
+	cout<<"Press <<2>> To Resume Previously Saved Game: "<<endl;
+	cout<<"Enter Option: ";
+	cin>>option;
+	system("cls");
+	switch(option)
+	{
+		srand(time(NULL));
+		snake s;
+		food f;
+		obstacle obs1, obs2, obs3;
+		boundary b1, b2;
+
+
+	case 1:
+		{
+			cout<<"Enter Player Name: ";
+			cin>>p.name;
+			system("cls");
+			initwindow(601, 491, "Snake Game", 300, 200);
+			setcolor(GREEN);
+			init(p, f, s, obs1, obs2, obs3, b1, b2);
+			draw(f, s, obs1, obs2, obs3, b1, b2);
+			int i=0, j=0;
+			while(1)
+			{
+				drawSnake(s);
+				moveSnake(s);
+				changeDirection(s, i, j);
+				Food_on_Obstacles(f);
+				drawFood(f);
+				eatFood(f, s, p);
+				//increaseSnakeSize(s);
+				collision_check(s);
+				display_name_score(p);
+				delay(5);
+				PauseAndSave(p, s, f); //pauses the game when user presses 'p'
+			}
+			break;
+		}
+	case 2:
+		{
+			initwindow(601, 491, "Snake Game", 300, 200);
+			setcolor(BLUE);
+			init(p, f, s, obs1, obs2, obs3, b1, b2);
+			newInitialization(p, s, f);
+			draw(f, s, obs1, obs2, obs3, b1, b2);
+			int i=0, j=0;
+			while(1)
+			{
+				drawSnake(s);
+				moveSnake(s);
+				changeDirection(s, i, j);
+				Food_on_Obstacles(f);
+				drawFood(f);
+				eatFood(f, s, p);
+				//increaseSnakeSize(s);
+				collision_check(s);
+				display_name_score(p);
+				delay(10);
+				PauseAndSave(p, s, f); //pauses the game when user presses 'p'
+			}
+		}
+	}
+}
+void init(player &p, food &f, snake &s, obstacle &obs1, obstacle &obs2, obstacle &obs3, boundary &b1, boundary &b2)
+{
+	initplayer(p);
+	initfood(f);
+	initsnake(s);
+	initboundary(b1, b2);
+	initobstacle(obs1, obs2, obs3);
+}
+void initplayer(player &p)
+{
+	p.score=0;
+}
+void initfood(food &f)
+{
+	int bw=10;
+	f.radius=5;
+	//f.x=rand()%(601-(2*bw)-(2*f.radius)+bw+f.radius);
+	//f.y=rand()%(451-(2*bw)-(2*f.radius)+bw+f.radius);
+	f.x=rand()%(537)+30;
+	f.y=rand()%(393)+30;
+
+}
+void initsnake(snake &s)
+{
+	s.snake_length = 70;
+	s.snake_head_x = 200;
+	s.snake_head_y = 200;
+	s.snake_head_direction = KEY_RIGHT;
+	s.snake_tail_x = s.snake_head_x - s.snake_length;
+	s.snake_tail_y = s.snake_head_y;
+	s.snake_tail_direction = KEY_RIGHT;
+}
+void initboundary(boundary &b1, boundary &b2)
+{
+	b1.x1=10; b1.y1=10; b1.x2=590; b1.y2=440;
+	b2.x1=20; b2.y1=20; b2.x2=580; b2.y2=430;
+}
+void initobstacle(obstacle &obs1, obstacle &obs2, obstacle &obs3)
+{
+	obs1.x1=60; obs1.y1=60; obs1.x2=200; obs1.y2=100;
+	obs2.x1=200; obs2.y1=330; obs2.x2=340; obs2.y2=370;
+	obs3.x1=500; obs3.y1=80; obs3.x2=540; obs3.y2=220;
+}
+
+void draw(food &f, snake &s, obstacle &obs1, obstacle &obs2, obstacle &obs3, boundary &b1, boundary &b2)
+{
+	drawFood(f);
+	drawSnake(s);
+	drawObs(obs1, obs2, obs3);
+	drawBoundary(b1, b2);
+}
+
+void drawFood(food &f)
+{
+	setcolor(CYAN);
+	circle(f.x, f.y, f.radius);
+	setfillstyle(SOLID_FILL, CYAN);
+	floodfill(f.x+1, f.y+1, CYAN);
+	setcolor(GREEN);
+}
+void drawSnake(snake &s)
+{
+	putpixel (s.snake_head_x, s.snake_head_y, WHITE); 
+	putpixel (s.snake_tail_x, s.snake_tail_y, BLACK);
+	//putpixel (s.snake_head_x, s.snake_head_y-1, YELLOW); 
+	//putpixel (s.snake_tail_x, s.snake_tail_y-1, BLACK);
+	//putpixel (s.snake_head_x, s.snake_head_y-2, YELLOW); 
+	//putpixel (s.snake_tail_x, s.snake_tail_y-2, BLACK);
+}
+void drawObs(obstacle &obs1, obstacle &obs2, obstacle &obs3)
+{
+	rectangle(obs1.x1, obs1.y1, obs1.x2, obs1.y2);
+	setfillstyle(SLASH_FILL,GREEN);
+	floodfill(obs1.x1+5,obs1.y1+5, GREEN);
+
+	rectangle(obs2.x1, obs2.y1, obs2.x2, obs2.y2);
+	setfillstyle(SLASH_FILL,GREEN);
+	floodfill(obs2.x1+5, obs2.y1+5, GREEN);
+
+	rectangle(obs3.x1, obs3.y1, obs3.x2, obs3.y2);
+	setfillstyle(SLASH_FILL,GREEN);
+	floodfill(obs3.x1+5,obs3.y1+5,GREEN);
+}
+void drawBoundary(boundary &b1, boundary &b2)
+{
+	rectangle(b1.x1, b1.y1, b1.x2, b1.y2);
+	rectangle(b2.x1, b2.y1, b2.x2, b2.y2);
+	setfillstyle(SLASH_FILL,GREEN);
+	floodfill(18,18,GREEN);
+}
+
+void moveSnake(snake &s)
+{
+	//FOR MOVING THE HEAD
+	if (s.snake_head_direction == KEY_RIGHT)
+	{
+		s.snake_head_x++; 
+	}
+	if (s.snake_head_direction == KEY_LEFT) 
+	{
+		s.snake_head_x--; 
+	}
+	if (s.snake_head_direction == KEY_UP) 
+	{	
+		s.snake_head_y--;
+	}
+	if (s.snake_head_direction == KEY_DOWN) 
+	{
+		s.snake_head_y++; 
+	}
+	//TO MOVE TAIL
+	if (s.snake_tail_direction == KEY_RIGHT)
+	{
+		s.snake_tail_x++; 
+	}
+	if (s.snake_tail_direction == KEY_LEFT) 
+	{
+		s.snake_tail_x--; 
+	}
+	if (s.snake_tail_direction == KEY_UP) 
+	{
+		s.snake_tail_y--;
+	}
+	if (s.snake_tail_direction == KEY_DOWN) 
+	{
+		s.snake_tail_y++; 
+	}
+
+}
+void changeDirection(snake &s, int &i, int &j)
+{
+	int direction=0;
+	if (kbhit ())
+	{
+		direction = getch ();
+
+		if (direction == KEY_LEFT && s.snake_head_direction != KEY_RIGHT)
+		{
+			s.snake_head_direction = KEY_LEFT; 
+			s.snake_bend_x [i] = s.snake_head_x;
+			s.snake_bend_y [i] = s.snake_head_y;
+			s.snake_bend_direction [i] = KEY_LEFT;
+			i++;
+		} 
+		if (direction == KEY_RIGHT && s.snake_head_direction != KEY_LEFT)
+		{
+			s.snake_head_direction = KEY_RIGHT;
+			s.snake_bend_x [i] = s.snake_head_x;
+			s.snake_bend_y [i] = s.snake_head_y;
+			s.snake_bend_direction [i] = KEY_RIGHT;
+			i++; 
+		}
+		if (direction == KEY_UP && s.snake_head_direction != KEY_DOWN)
+		{
+			s.snake_head_direction = KEY_UP;
+			s.snake_bend_x [i] = s.snake_head_x;
+			s.snake_bend_y [i] = s.snake_head_y;
+			s.snake_bend_direction [i] = KEY_UP;
+			i++; 
+		}
+		if (direction == KEY_DOWN && s.snake_head_direction != KEY_UP)
+		{
+			s.snake_head_direction = KEY_DOWN;
+			s.snake_bend_x [i] = s.snake_head_x;
+			s.snake_bend_y [i] = s.snake_head_y;
+			s.snake_bend_direction [i] = KEY_DOWN;
+			i++; 
+		}
+
+	}         
+	//TO MAKE TAIL FOLLOW THE SNAKE
+	if (s.snake_tail_x == s.snake_bend_x [j] && s.snake_tail_y == s.snake_bend_y [j])
+	{
+		s.snake_tail_direction = s.snake_bend_direction [j];
+		j++;
+	}
+}
+void collision_check(snake &s)
+{
+	collision_wall(s);
+	collision_obstacles(s);
+	collision_snake(s);
+}
+void collision_wall(snake &s)
+{
+	if (s.snake_head_x <= 20 || s.snake_head_x >= 580 || s.snake_head_y <= 22 || s.snake_head_y >= 430)
+	{
+		outtextxy (250, 200, "GAME OVER!!");
+		highscore(p);
+		delay (3000);
+		exit (-1);
+	}
+}
+void collision_obstacles(snake &s)
+{
+	int b_pixelx=s.snake_head_x, b_pixely=s.snake_head_y;
+	if (s.snake_head_direction == KEY_RIGHT)
+	{
+		b_pixelx++; 
+	}
+	if (s.snake_head_direction == KEY_LEFT) 
+	{
+		b_pixelx--; 
+	}
+	if (s.snake_head_direction == KEY_UP) 
+	{	
+		b_pixely--;
+	}
+	if (s.snake_head_direction == KEY_DOWN) 
+	{
+		b_pixely++; 
+	}
+	int pixelcolor = getpixel(b_pixelx, b_pixely);
+	if(pixelcolor == GREEN)
+	{
+		outtextxy (250, 200, "GAME OVER!!");
+		highscore(p);
+		delay (3000);
+		exit (-1);
+	}
+}
+void collision_snake(snake &s)
+{
+	int pixelx=s.snake_head_x, pixely=s.snake_head_y;
+	if (s.snake_head_direction == KEY_RIGHT)
+	{
+		pixelx++; 
+	}
+	if (s.snake_head_direction == KEY_LEFT) 
+	{
+		pixelx--; 
+	}
+	if (s.snake_head_direction == KEY_UP) 
+	{	
+		pixely--;
+	}
+	if (s.snake_head_direction == KEY_DOWN) 
+	{
+		pixely++; 
+	}
+	int pixelcolor = getpixel(pixelx, pixely);
+	if(pixelcolor == WHITE)
+	{
+		outtextxy (250, 200, "GAME OVER!!");
+		highscore(p);
+		delay (3000);
+		exit (-1);
+	}
+}
+void PauseAndSave(player &p, snake &s, food &f)
+{
+	char pause=' ';
+	if(kbhit())
+	{
+		pause=getch();
+		if(pause=='p')
+		{
+			int option2=0;
+
+			cout<<"Press <<1>> To Save Game And Exit"<<endl;
+			cout<<"Press <<2>> To Save Game And Resume"<<endl;
+			cout<<"Press <<3>> To Exit Without Saving"<<endl;
+			cout<<"Press <<4>> To Resume Game"<<endl;
+			cin>>option2;
+			system("cls");
+
+			switch(option2)
+			{
+			case 1:
+				{
+					FILE *fp= fopen("Saved Game(Snake).txt", "w");
+					fprintf(fp, "%s_%d_%d_%d_%d_%d_%d_%d_%d_%d_%d",p.name, p.score, s.snake_head_x, s.snake_head_y, s.snake_head_direction, s.snake_tail_x, s.snake_tail_y, s.snake_tail_direction, f.x, f.y, f.radius);
+					fclose(fp);
+					exit(-1);
+					highscore(p);
+					break;
+				}
+			case 2:
+				{
+					FILE *fp= fopen("Saved Game(Snake).txt", "w");
+					fprintf(fp, "%s_%d_%d_%d_%d_%d_%d_%d_%d_%d_%d",p.name, p.score, s.snake_head_x, s.snake_head_y, s.snake_head_direction, s.snake_tail_x, s.snake_tail_y, s.snake_tail_direction, f.x, f.y, f.radius);
+					fclose(fp);
+					break;
+				}
+			case 3:
+				{
+					highscore(p);
+					exit(-1);
+
+				}
+			case 4:
+				{
+					break;
+				}
+			}
+		}
+	}
+}
+void newInitialization(player &p, snake &s, food &f)
+{
+	char buffer[200];
+	FILE *fp2= fopen("Saved Game(Snake).txt", "r");
+
+	while(!feof(fp2))
+	{
+		fgets(buffer, 200, fp2);
+		strcpy(p.name, strtok(buffer, "_"));
+		p.score=atoi(strtok(NULL, "_"));
+		s.snake_head_x=atoi(strtok(NULL, "_"));
+		s.snake_head_y=atoi(strtok(NULL, "_"));
+		s.snake_head_direction=atoi(strtok(NULL, "_"));
+		s.snake_tail_x=atoi(strtok(NULL, "_"));
+		s.snake_tail_y=atoi(strtok(NULL, "_"));
+		s.snake_tail_direction=atoi(strtok(NULL, "_"));
+		f.x=atoi(strtok(NULL, "_"));
+		f.y=atoi(strtok(NULL, "_"));
+		f.radius=atoi(strtok(NULL, "_"));
+	}
+}
+void eatFood(food &f, snake &s, player &p)
+{
+	int food_pixelx=s.snake_head_x, food_pixely=s.snake_head_y;
+	if (s.snake_head_direction == KEY_RIGHT)
+	{
+		food_pixelx++; 
+	}
+	if (s.snake_head_direction == KEY_LEFT) 
+	{
+		food_pixelx--; 
+	}
+	if (s.snake_head_direction == KEY_UP) 
+	{	
+		food_pixely--;
+	}
+	if (s.snake_head_direction == KEY_DOWN) 
+	{
+		food_pixely++; 
+	}
+	int pixelcolor = getpixel(food_pixelx, food_pixely);
+	if(pixelcolor == CYAN)
+	{
+		setcolor(BLACK);
+		rectangle(f.x-f.radius, f.y-f.radius, f.x+f.radius, f.y+f.radius);
+		setfillstyle(SOLID_FILL, BLACK);
+		floodfill(f.x+1, f.y+1, BLACK);
+		setcolor(GREEN);
+		initfood(f);
+		increaseSnakeSize(s);
+		p.score+=10;
+	}
+}
+void increaseSnakeSize(snake &s)
+{
+	int i=0;
+	if (s.snake_tail_direction == KEY_UP)
+	{
+		for (i = 0; i<=50; i++)
+		{
+			putpixel (s.snake_tail_x,s.snake_tail_y+i,15);
+		}
+		s.snake_tail_y+=50;
+	}
+	if (s.snake_tail_direction == KEY_RIGHT)
+	{
+		for (i = 0; i<=50; i++)
+		{
+			putpixel (s.snake_tail_x-i,s.snake_tail_y,15);
+		}
+		s.snake_tail_x-=50;
+	}
+	if (s.snake_tail_direction == KEY_LEFT)
+	{
+		for (i = 0; i<=50; i++)
+		{
+			putpixel (s.snake_tail_x+i,s.snake_tail_y,15);
+		}
+		s.snake_tail_x+=50;
+	}
+	if (s.snake_tail_direction == KEY_DOWN)
+	{
+		for (i = 0; i<=50; i++)
+		{
+			putpixel (s.snake_tail_x,s.snake_tail_y-i,15);
+		}
+		s.snake_tail_y-=50;
+	}
+}
+void display_name_score(player &p)
+{
+	char buff[100]="\0";
+	outtextxy(50,460, "Name: ");
+	outtextxy(100, 460, p.name);
+	  sprintf (buff, "Score : %d", p.score);
+       outtextxy (500,460, buff);
+}
+void Food_on_Obstacles(food &f)
+{
+
+	if(f.x+f.radius>=60&&f.y+f.radius>=60&&f.x+f.radius<=200&&f.y+f.radius<=100)
+	{
+		initfood(f);
+	}
+	if(f.x+f.radius>=200&&f.y+f.radius>=330&&f.x+f.radius<=340&&f.y+f.radius<=370)
+	{
+		initfood(f);
+	}
+	if(f.x+f.radius>=500&&f.y+f.radius>=80&&f.x+f.radius<=540&&f.y+f.radius<=220)
+	{
+		initfood(f);
+	}
+}
+void highscore(player &p)
+{
+	FILE *hs= fopen("highscore.txt","a");
+	fprintf(hs, "\n%s_%d", p.name, p.score);
+}
